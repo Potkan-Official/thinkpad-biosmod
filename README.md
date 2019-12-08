@@ -1,5 +1,7 @@
 # ThinkPad BiosMod
 
+![](meme.png)
+
 ## Roadmap
 - [x] Create signature verification tool
 - [x] Create signature replacement tool
