@@ -25,6 +25,7 @@ with open(args.bios_file, "rb") as f:
 
 if args.sandy:
     print(COLOR_WARN + "Using Sandy/Ivy Bridge compatibility mode" + COLOR_RESET)
+    data = data[72:]
 elif data[0:19] == INTEL_IMAGE_HEADER:
     print(COLOR_BLUE + "Broadwell BIOS image detected!" + COLOR_RESET)
     # Truncate ME firmware and other Intel's shit, I only want the BIOS region
@@ -47,7 +48,7 @@ size = struct.unpack('<q', data[size_offset:size_offset + 3] + b"\x00\x00\x00\x0
 
 print("Calculating hash")
 
-calculated_hash = hashlib.sha1(data[(72 if args.sandy else 0):(size + 72 if args.sandy else size)]).hexdigest()
+calculated_hash = hashlib.sha1(data[:size]).hexdigest()
 
 if hash == calculated_hash:
     print(COLOR_OK + "Hashes match!" + COLOR_RESET)
@@ -62,8 +63,12 @@ tcpa_hash = hashlib.sha1(data[tcpa_offset:tcpa_offset + 107]).hexdigest()
 signature_offset = tcpa_offset + 110
 signature = data[signature_offset:signature_offset + 128]
 
-lenovo_pei_offset = data.find(LENOVO_TPM_OEM_PEI_HEADER)
-modulus_offset = lenovo_pei_offset + 82
+if args.sandy:
+    modulus_offset = data.find(b"\xFF" * 16 + b"\x12\x04") + 18
+else:
+    lenovo_pei_offset = data.find(LENOVO_TPM_OEM_PEI_HEADER)
+    modulus_offset = lenovo_pei_offset + 82
+
 modulus = data[modulus_offset:modulus_offset + 129]
 
 with open("pub_key.der", "wb") as f:
@@ -83,6 +88,3 @@ if recovered_hash == tcpa_hash:
     print(COLOR_OK + "Signature is valid!")
 else:
     print(COLOR_FAIL + "Signature is NOT valid!")
-
-if args.sandy:
-    print("WARNING: Sandy/Ivy Bridge ThinkPad support is not finished, it will always show that signature isn't valid.")
